@@ -13,9 +13,29 @@ export const mbRot = d => mat3Mul(mat3Mul(Rz(d[2] * DEG), Ry(d[1] * DEG)), Rx(d[
 const v3 = (v, id) => [v[id + 'X'], v[id + 'Y'], v[id + 'Z']];
 const glm = m => mat3ToColumnMajor(m);
 
+// Rotation by angle (degrees) about unit axis n (Rodrigues), row-major.
+export function axisAngle(n, deg) {
+  const l = Math.hypot(n[0], n[1], n[2]);
+  if (!(l > 0)) return [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  const [x, y, z] = n.map(t => t / l), c = Math.cos(deg * DEG), s = Math.sin(deg * DEG), t = 1 - c;
+  return [c + t * x * x, t * x * y - s * z, t * x * z + s * y,
+    t * x * y + s * z, c + t * y * y, t * y * z - s * x,
+    t * x * z - s * y, t * y * z + s * x, c + t * z * z];
+}
+// The Fragmentarium formulas' rotation as z' = M·z. Fragmentarium's
+// rotationMatrix3(v, a) is built column-wise, i.e. it is Rᵀ(v, a), so
+// "p *= rot" (row vector) rotates by R(v, a) and "p = rot * p" (MandalayBox)
+// by R(v, −a); "p *= rotationMatrixXYZ(r)" is Rz·Ry·Rx, Mandelbulber's order.
+export function fragmRot(v) {
+  const V = v.boxVariant | 0;
+  if (V === 16 || V === 17) return mbRot(v3(v, 'fmEuler'));
+  const n = v3(v, 'fmAxis');
+  return axisAngle(n, V === 14 ? -v.fmAngle : v.fmAngle);
+}
+
 // Row-major rotation matrices the formula uses (shared with de.js).
 export function rotations(v) {
-  const out = { rot: mbRot(v3(v, 'fRot')), rot2: mbRot(v3(v, 'fRot2')) };
+  const out = { rot: mbRot(v3(v, 'fRot')), rot2: mbRot(v3(v, 'fRot2')), fm: fragmRot(v) };
   if ((v.boxVariant | 0) === 0 && v.rotFolds) {
     for (const [k, id] of [['N', 'rfN'], ['P', 'rfP']]) for (let d = 0; d < 3; d++) {
       const m = mbRot(v3(v, `${id}${'XYZ'[d]}`));
@@ -96,6 +116,24 @@ export function uniforms(v, scaleOverride) {
     u_cIn: !!v.cIn,
     u_cInMul: v3(v, 'cInMul'),
     u_cInSigned: !!v.cInSigned,
+    // Fragmentarium formulas (13–19).
+    u_fmRot: glm(R.fm),
+    u_fmTrans: v3(v, 'fmTrans'),
+    u_foldW: v.foldW,
+    u_sphOffW: v.sphOffW,
+    u_mdFo: v3(v, 'mdFo'),
+    u_mdG: v3(v, 'mdG'),
+    u_mdW: v3(v, 'mdW'),
+    u_mdPseudo: !!v.mdPseudo,
+    u_mdSerial: !!v.mdSerial,
+    u_mdBoxFold: !!v.mdBoxFold,
+    u_sbFoldMod: v3(v, 'sbFoldMod'),
+    u_fmVaryOff: v.fmVaryOff,
+    u_tbCTOff: v.tbCTOff,
+    u_pbFold: v.pbFold,
+    u_icScale: [v.icScaleY, v.icScaleZ, v.icScaleInv],
+    u_icIterA: v.icIterA | 0,
+    u_icIterB: v.icIterB | 0,
   };
   for (const k of Object.keys(R)) if (k.startsWith('rf')) out['u_' + k] = glm(R[k]);
   return out;

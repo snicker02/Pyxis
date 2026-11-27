@@ -46,7 +46,8 @@ if (args[0] === '--scan') {
   const lines = [];
   for (const o of list.originals) {
     const full = { ...D, ...VARIANT_DEFAULTS[o.variant], ...list.look, ...o.v };
-    lines.push(`  ${o.key}: { group: 'pyxis', label: ${JSON.stringify(o.label)}, v: ${JSON.stringify(sceneValues(full))} },`);
+    const credit = o.credit ? `, credit: ${JSON.stringify(o.credit)}` : '';
+    lines.push(`  ${o.key}: { group: '${o.group || 'pyxis'}', label: ${JSON.stringify(o.label)}${credit}, v: ${JSON.stringify(sceneValues(full))} },`);
   }
   for (const it of list.fract) {
     const r = importMandelbulber(readFileSync(here(`../presets/mandelbulber/${it.file}`), 'utf8'));

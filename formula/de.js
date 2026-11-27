@@ -6,6 +6,7 @@
 
 import { effectiveIterations } from '../core/engine/params.js';
 import { rotations } from './uniforms.js';
+import { fragmDE } from './fragm.js';
 export { makeDE, repHash, repeatMap, marchInfo, march, probePixel, pickPixel, viewScore, suggestVolumeShell } from '../core/engine/de.js';
 
 const sign = x => (x > 0 ? 1 : x < 0 ? -1 : 0);
@@ -18,6 +19,7 @@ const DEG = Math.PI / 180;
 // `scaleOverride` carries the Scale Pulse.
 export function localDE(v, scaleOverride) {
   const V = v.boxVariant | 0;
+  if (V >= 13) return fragmDE(v, scaleOverride); // Fragmentarium formulas
   const iters = effectiveIterations(v), bail = v.bailout;
   const S = scaleOverride ?? v.scale;
   const F = v3(v, 'fold'), F4 = v.fold4, FV = v.foldValue, FO = v3(v, 'foldOff');

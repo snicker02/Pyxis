@@ -1,14 +1,17 @@
 // Pyxis's GLSL: the Mandelbox-family formula uniforms and mapLocal(). Organon
 // (core/engine/glsl.js) wraps them with the shared renderer.
 //
-// Each formula is a line-for-line port of Mandelbulber's FormulaCode
+// Formulas 0–12: each is a line-for-line port of Mandelbulber's FormulaCode
 // (formula/definition/fractal_*.cpp) plus the iteration loop around it
 // (src/compute_fractal.cpp: c addition, bailout, linear DE r / DE). The
 // program is SPECIALISED per formula (#define BOX_VARIANT), so a formula's
 // code costs nothing to the others; the Mandelbox's rotated folds are their
 // own program too (BOX_ROTFOLDS). Everything continuous is a uniform.
 //
-// formula/de.js is the CPU port of the same code, kept in lock-step.
+// Formulas 13–19 are ports of Fragmentarium (FragM) example DE() functions,
+// each with its own loop and DE rule (second mapLocal below).
+//
+// formula/de.js and formula/fragm.js are the CPU ports, kept in lock-step.
 
 import { fractalFrag as coreFrag, fractalMapSource as coreMapSource } from '../core/engine/glsl.js';
 
@@ -80,6 +83,24 @@ uniform vec3  u_cMul;
 uniform bool  u_cIn;
 uniform vec3  u_cInMul;
 uniform bool  u_cInSigned;
+// Fragmentarium formulas (13–19).
+uniform mat3  u_fmRot;
+uniform vec3  u_fmTrans;
+uniform float u_foldW;
+uniform float u_sphOffW;
+uniform vec3  u_mdFo;
+uniform vec3  u_mdG;
+uniform vec3  u_mdW;
+uniform bool  u_mdPseudo;
+uniform bool  u_mdSerial;
+uniform bool  u_mdBoxFold;
+uniform vec3  u_sbFoldMod;
+uniform float u_fmVaryOff;
+uniform float u_tbCTOff;
+uniform float u_pbFold;
+uniform vec3  u_icScale;      // Y scale, Z scale, overall scale
+uniform int   u_icIterA;
+uniform int   u_icIterB;
 #ifdef BOX_ROTFOLDS
 uniform mat3  u_rfN0, u_rfN1, u_rfN2, u_rfP0, u_rfP1, u_rfP2;      // mandelbox rot[0][d], rot[1][d]
 uniform mat3  u_rfN0i, u_rfN1i, u_rfN2i, u_rfP0i, u_rfP1i, u_rfP2i; // and their inverses
@@ -141,6 +162,7 @@ vec3 rotFold(vec3 z, mat3 rn, mat3 rni, mat3 rp, mat3 rpi, int d, float lim) {
 // ═══ Distance estimator ═══════════════════════════════════════════════════
 // p is in the formula's own frame (Mandelbulber's, Z up); Organon's object
 // transform maps the scene into it.
+#if BOX_VARIANT <= 12
 float mapLocal(vec3 p, out float trap) {
 #ifdef HAS_MAT
   g_texDone = false;
@@ -495,6 +517,248 @@ float mapLocal(vec3 p, out float trap) {
   else if (u_colorSource == 2) trap += folds * u_foldColW * 2.5;
   return r / abs(dr);
 }
+#else
+// ═══ Fragmentarium formulas (13–19) ═══════════════════════════════════════
+// Ports of the DE() of the FragM example .frag files named in params.js, with
+// their own iteration, constant and DE rules. u_fmRot is the formula's
+// per-iteration rotation as z' = M·z (see uniforms.js, fragmRot).
+
+#if BOX_VARIANT == 14
+// DarkBeam's fold as reinterpreted by Knighty (MandalayBox / Pseudo-MandalayBox).
+float mdFold1(vec3 p, float fo, float g, float w) {
+  if (p.z > p.y) p.yz = p.zy;
+  float vx = p.x - 2.0 * fo;
+  float vy = p.y - 4.0 * fo;
+  float v = max(abs(vx + fo) - fo, vy);
+  float v1;
+  if (u_mdPseudo) { v1 = max(vx - g, p.y - w); v1 = max(v1, -abs(p.x)); }
+  else v1 = max(vx - g, p.y);
+  v = min(v, v1);
+  return min(v, p.x);
+}
+#endif
+
+float mapLocal(vec3 p, out float trap) {
+#ifdef HAS_MAT
+  g_texDone = false;
+#endif
+  g_boxCol = 0.0;
+  g_sphCol = 0.0;
+  trap = 1e10;
+  float minR2 = max(u_minR2, 1e-6);
+  vec4 z = vec4(p, 0.0);
+  float dr = 1.0;
+  float r = length(p);
+  float rr = dot(p, p);
+#if BOX_VARIANT == 13
+  float sdm = u_scale / minR2, sdmW = abs(u_scale) / minR2;
+#elif BOX_VARIANT == 14
+  vec4 jc = u_juliaMode ? vec4(u_juliaC, 0.0) : vec4(p, 1.0);
+#elif BOX_VARIANT == 15
+  float compound = 0.0;
+#elif BOX_VARIANT == 16
+  vec4 ct = vec4(p, length(p));
+  z = ct;
+#elif BOX_VARIANT == 17
+  vec4 ct = abs(vec4(p.x + p.y + p.z, -p.x - p.y + p.z, -p.x + p.y - p.z, p.x - p.y - p.z));
+  ct = abs(ct - u_tbCTOff);
+  z = ct;
+#elif BOX_VARIANT == 18
+  vec4 pc = vec4(p, 1.0);
+  vec4 zPrev = u_juliaMode ? vec4(u_juliaC, 1.0) : vec4(0.0, 0.0, 0.0, 1.0);
+  z = pc;
+  float racc = 0.0;
+#endif
+  for (int i = 0; i < 250; i++) {
+    if (i >= u_iterations) break;
+    g_colOn = i < u_colorIters ? 1.0 : 0.0;
+
+#if BOX_VARIANT == 13
+    // ── Kalibox (Rrrola's Mandelbox DE with Kali's abs fold) ───────────────
+    vec3 q = u_fmRot * z.xyz;
+    q = abs(q) + u_fmTrans;
+    float r2 = dot(q, q);
+    if (r2 < minR2) g_sphCol += g_colOn; else if (r2 < 1.0) g_sphCol += 0.5 * g_colOn;
+    float f = clamp(max(minR2 / r2, minR2), 0.0, 1.0);
+    q *= f * sdm;
+    dr *= f * sdmW;
+    if (u_juliaMode) { q += u_juliaC; dr += 1.0; }
+    z.xyz = q;
+    rr = dot(q, q);
+
+#elif BOX_VARIANT == 14
+    // ── MandalayBox (Knighty) ──────────────────────────────────────────────
+    if (rr >= u_bailout * u_bailout) break;
+    vec3 q = z.xyz;
+    if (u_mdBoxFold) {
+      if (abs(q.x) > 1.0) g_boxCol += g_colOn;
+      if (abs(q.y) > 1.0) g_boxCol += g_colOn;
+      if (abs(q.z) > 1.0) g_boxCol += g_colOn;
+      q = q - clamp(q, -1.0, 1.0) * 2.0;
+    }
+    vec3 sg = sign(q);
+    q = abs(q);
+    if (u_mdSerial) {
+      q.x = mdFold1(q, u_mdFo.x, u_mdG.x, u_mdW.x);
+      q.y = mdFold1(q.yzx, u_mdFo.y, u_mdG.y, u_mdW.y);
+      q.z = mdFold1(q.zxy, u_mdFo.z, u_mdG.z, u_mdW.z);
+    } else {
+      vec3 q1 = q;
+      q.x = mdFold1(q1, u_mdFo.x, u_mdG.x, u_mdW.x);
+      q.y = mdFold1(q1.yzx, u_mdFo.y, u_mdG.y, u_mdW.y);
+      q.z = mdFold1(q1.zxy, u_mdFo.z, u_mdG.z, u_mdW.z);
+    }
+    q *= sg;
+    float r2 = dot(q, q);
+    if (r2 < minR2) g_sphCol += g_colOn; else if (r2 < 1.0) g_sphCol += 0.5 * g_colOn;
+    float t = clamp(1.0 / r2, 1.0, 1.0 / minR2);
+    q *= t;
+    dr *= t;
+    q = q * u_scale + jc.xyz;
+    dr = dr * u_scale + jc.w;
+    q = u_fmRot * q;
+    z.xyz = q;
+    rr = dot(q, q);
+
+#elif BOX_VARIANT == 15
+    // ── SurfBox (DarkBeam's capped box fold) ───────────────────────────────
+    vec3 q = z.xyz;
+    vec3 sg = sign(q);
+    vec3 tg = abs(q + u_fold) - abs(q - u_fold) - q;
+    vec3 folder = min(abs(sg * (q - tg)), u_sbFoldMod);
+    if (folder.x != 0.0) g_boxCol += g_colOn;
+    if (folder.y != 0.0) g_boxCol += g_colOn;
+    if (folder.z != 0.0) g_boxCol += g_colOn;
+    q -= sg * folder;
+    float r2 = dot(q, q);
+    if (r2 < minR2) { float k = u_fixR2 / minR2; q *= k; dr *= k; g_sphCol += g_colOn; }
+    else if (r2 < u_fixR2) { float k = u_fixR2 / r2; q *= k; dr *= k; g_sphCol += 0.5 * g_colOn; }
+    float useScale = u_scale + compound;
+    q *= useScale;
+    dr = dr * abs(useScale) + u_deOff;
+    compound = -(u_scaleVary * (abs(compound) - u_fmVaryOff));
+    q = u_fmRot * q;
+    if (u_addC) q += p * u_cMul;
+    if (u_juliaMode) q += u_juliaC;
+    z.xyz = q;
+    rr = r2; // the original bails out on the sphere-fold r²
+
+#elif BOX_VARIANT == 16 || BOX_VARIANT == 17
+    // ── SphereBox 4D / TetraBox (Aexion) ───────────────────────────────────
+    vec4 lim = vec4(u_fold, u_foldW);
+    vec4 o = z;
+    z = abs(z + lim) - abs(z - lim) - z;
+    if (z.x != o.x) g_boxCol += g_colOn;
+    if (z.y != o.y) g_boxCol += g_colOn;
+    if (z.z != o.z) g_boxCol += g_colOn;
+    if (z.w != o.w) g_boxCol += g_colOn;
+    float r2 = dot(z, z);
+    vec4 so = vec4(u_sphOff, u_sphOffW);
+    z += so;
+    if (r2 < minR2) { float k = u_fixR2 / minR2; z *= k; dr *= k; g_sphCol += g_colOn; }
+    else if (r2 < u_fixR2) { float k = u_fixR2 / r2; z *= k; dr *= k; g_sphCol += 0.5 * g_colOn; }
+    z -= so;
+    z *= u_scale;
+    dr = dr * u_scale + 1.0;
+    z.xyz = u_fmRot * z.xyz;
+  #if BOX_VARIANT == 16
+    if (u_rot4On) {
+      vec4 t = z;
+      z.x = t.x * u_r4c1.x + t.y * u_r4s1.x; z.y = -t.x * u_r4s1.x + t.y * u_r4c1.x;
+      t = z;
+      z.y = t.y * u_r4c1.y + t.z * u_r4s1.y; z.z = -t.y * u_r4s1.y + t.z * u_r4c1.y;
+      t = z;
+      z.x = t.x * u_r4c1.z + t.z * u_r4s1.z; z.z = -t.x * u_r4s1.z + t.z * u_r4c1.z;
+      t = z;
+      z.x = t.x * u_r4c2.x + t.w * u_r4s2.x; z.w = -t.x * u_r4s2.x + t.w * u_r4c2.x;
+      t = z;
+      z.y = t.y * u_r4c2.y + t.w * u_r4s2.y; z.w = -t.y * u_r4s2.y + t.w * u_r4c2.y;
+      t = z;
+      z.z = t.z * u_r4c2.z + t.w * u_r4s2.z; z.w = -t.z * u_r4s2.z + t.w * u_r4c2.z;
+    }
+  #endif
+    z += ct;
+    rr = dot(z, z);
+
+#elif BOX_VARIANT == 18
+    // ── PetraBox (Julia / previous-iteration interpolation) ────────────────
+    vec4 zt = z;
+    vec3 q = z.xyz;
+    if (abs(q.x) > u_pbFold) g_boxCol += g_colOn;
+    if (abs(q.y) > u_pbFold) g_boxCol += g_colOn;
+    if (abs(q.z) > u_pbFold) g_boxCol += g_colOn;
+    z.xyz = min(max(q, -u_pbFold), u_pbFold) * 2.0 - q;
+    float d2 = dot(z.xyz, z.xyz);
+    if (d2 < u_minR2) g_sphCol += g_colOn; else if (d2 < 1.0) g_sphCol += 0.5 * g_colOn;
+    z *= u_scale / min(max(d2, u_minR2), 1.0);
+    z += u_juliaMode ? (zPrev + pc) * 0.5 : zPrev;
+    zPrev = zt;
+    z.xyz = u_fmRot * z.xyz;
+    racc += abs(length(z.xyz) - length(zPrev.xyz)) / float(i + 1);
+    rr = dot(z.xyz, z.xyz);
+
+#elif BOX_VARIANT == 19
+    // ── ABox Inverse Cylinder (CozyG) ──────────────────────────────────────
+    vec3 q = z.xyz;
+    vec3 o = q;
+    q = abs(q + u_fold) - abs(q - u_fold) - q;
+    if (q.x != o.x) g_boxCol += g_colOn;
+    if (q.y != o.y) g_boxCol += g_colOn;
+    if (q.z != o.z) g_boxCol += g_colOn;
+    float r2 = dot(q, q);
+    if (r2 < minR2) g_sphCol += g_colOn; else if (r2 < 1.0) g_sphCol += 0.5 * g_colOn;
+    float f = clamp(max(minR2 / r2, minR2), 0.0, 1.0);
+    q *= f;
+    dr *= f;
+    float sdm = u_scale / minR2;
+    q *= sdm;
+    dr = dr * abs(sdm) + 1.0;
+    q = u_fmRot * q;
+    if (u_addC) q += p * u_cMul;
+    if (u_juliaMode) q += u_juliaC;
+    if (i == u_icIterA || i == u_icIterB) {
+      q = vec3(q.x * cos(q.y * u_icScale.x), q.x * sin(q.y * u_icScale.x), q.z * u_icScale.y) * u_icScale.z;
+      dr *= abs(u_icScale.z);
+    }
+    z.xyz = q;
+    rr = r2; // the original bails out on the sphere-fold r²
+#endif
+
+    r = length(z);
+    trap = min(trap, dot(z, z));
+#ifdef HAS_MAT
+    if (g_texProbe && !g_texDone && i >= u_texFracStart) {
+      vec3 dz = abs(z.xyz - p);
+      if (max(dz.x, max(dz.y, dz.z)) < u_texFracCube) { g_texZ = z.xyz; g_texDone = true; }
+      else if (r > u_texFracCube * 100.0) { g_texZ = z.xyz / r; g_texDone = true; }
+    }
+#endif
+#if BOX_VARIANT == 15 || BOX_VARIANT == 19
+    if (rr > u_bailout) break;
+#elif BOX_VARIANT == 16 || BOX_VARIANT == 17
+    if (r > u_bailout) break;
+#elif BOX_VARIANT == 13 || BOX_VARIANT == 18
+    if (rr > 1e20) break; // no bailout in the originals; this only avoids overflow
+#endif
+  }
+#ifdef HAS_MAT
+  g_orbit = trap;
+  if (g_texProbe && !g_texDone) g_texZ = z.xyz;
+#endif
+  float folds = g_boxCol + g_sphCol;
+  if (u_colorSource == 1) trap = folds * u_foldColW * 2.5;
+  else if (u_colorSource == 2) trap += folds * u_foldColW * 2.5;
+#if BOX_VARIANT == 13
+  return (r - abs(u_scale - 1.0)) / abs(dr) - pow(abs(u_scale), float(1 - u_iterations));
+#elif BOX_VARIANT == 14
+  return (sqrt(rr) - 30.0) / abs(dr);
+#elif BOX_VARIANT == 18
+  return abs(racc / z.w);
+#else
+  return r / abs(dr);
+#endif
+}
+#endif
 `;
 
 export const defines = f => `#define BOX_VARIANT ${f.variant | 0}\n` + (f.rf ? '#define BOX_ROTFOLDS\n' : '');
@@ -504,7 +768,7 @@ export const source = () => SOURCE;
 // rotated folds (their own program, so the plain Mandelbox stays fast).
 export function spec(raw) {
   raw = raw || {};
-  const variant = Math.max(0, Math.min(12, raw.variant | 0));
+  const variant = Math.max(0, Math.min(19, raw.variant | 0));
   return { variant, rf: variant === 0 && !!raw.rf };
 }
 export const specKey = f => `b${f.variant}${f.rf ? 'r' : ''}`;

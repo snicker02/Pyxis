@@ -2,6 +2,8 @@
 //   • schema, gates and formula defaults
 //   • CPU distance estimator vs Mandelbulber's own C++ (tests/fixtures/mbref.json,
 //     made by tools/mbref-compare.mjs from Mandelbulber's FormulaCode)
+//   • CPU distance estimator vs the original Fragmentarium code for formulas
+//     13–19 (tests/fixtures/fragmref.json, made by tools/fragm-compare.mjs)
 //   • shader assembly for every formula, render mode and option
 //     (glslangValidator, if installed)
 //   • Mandelbulber .fract import of every bundled scene, discovery strings,
@@ -33,7 +35,7 @@ for (const p of L.PARAMS) {
     ok(g && (g.type === 'bool' || (g.type === 'select' && eqs.every(e => Number.isInteger(e) && e >= 0 && e < g.options.length))), `${p.id}: gate ${p.gate}`);
   }
 }
-ok(L.BOX_VARIANTS.length === 13 && L.VARIANT_DEFAULTS.length === 13 && L.VARIANT_DESC.length === 13, 'one default set and description per formula');
+ok(L.BOX_VARIANTS.length === 20 && L.VARIANT_DEFAULTS.length === 20 && L.VARIANT_DESC.length === 20, 'one default set and description per formula');
 for (const [V, vd] of L.VARIANT_DEFAULTS.entries()) {
   ok(vd.boxVariant === V, `variant ${V} defaults name their formula`);
   for (const [k, x] of Object.entries(vd)) {
@@ -68,13 +70,36 @@ for (const c of ref) {
 }
 console.log('   ' + Object.entries(per).map(([k, [n, g]]) => `${k.replace('Abox - ', '')} ${g}/${n}`).join(' · '));
 
+// ── CPU DE vs the original Fragmentarium code ───────────────────────────────
+// tests/fixtures/fragmref.json: distances from the original FragM .frag DE(),
+// compiled on a GPU (float32) by tools/fragm-compare.mjs. Pyxis's CPU port runs
+// in double precision, so the check is relative 1e-3, and a few percent of
+// points may drift further where float32 rounding is amplified through the
+// folds (MandalayBox). "inside": the original returns nothing (no bailout).
+section('fragmentarium reference');
+const fref = JSON.parse(readFileSync(join(HERE, 'fixtures/fragmref.json'), 'utf8'));
+const fper = {};
+for (const c of fref) {
+  const de = L.localDE({ ...D, ...L.VARIANT_DEFAULTS[c.V], ...c.p, boxVariant: c.V, colorSource: 0, deepZoom: false });
+  const k = c.file.split('/').pop();
+  fper[k] ??= [0, 0];
+  for (const { p, d, inside } of c.pts) {
+    const b = de(p).d;
+    if (inside) { ok(Number.isFinite(b) && b >= 0 && b < 0.05, `${k} at ${p}: inside, Pyxis ${b}`); continue; }
+    fper[k][0]++;
+    fper[k][1] += Math.abs(b - d) <= 1e-3 * Math.max(1, Math.abs(d)) ? 1 : 0;
+  }
+}
+for (const [k, [n, g]] of Object.entries(fper)) ok(g >= 0.93 * n, `${k}: ${g}/${n} within 1e-3 of the original`);
+console.log('   ' + Object.entries(fper).map(([k, [n, g]]) => `${k.replace('.frag', '')} ${g}/${n}`).join(' · '));
+
 // ── Shaders ─────────────────────────────────────────────────────────────────
 section('shaders');
 const hasGlslang = spawnSync('glslangValidator', ['--version']).status === 0;
 const tmp = mkdtempSync(join(tmpdir(), 'pyxis-'));
 let compiled = 0;
 const keys = new Set();
-for (let V = 0; V < 13; V++) for (const rf of V === 0 ? [false, true] : [false]) {
+for (let V = 0; V < L.BOX_VARIANTS.length; V++) for (const rf of V === 0 ? [false, true] : [false]) {
   const v = { ...D, ...L.VARIANT_DEFAULTS[V], rotFolds: rf };
   const su = L.sceneUniforms(v);
   const sp = L.specOf(su);
@@ -95,7 +120,7 @@ for (let V = 0; V < 13; V++) for (const rf of V === 0 ? [false, true] : [false])
   }
 }
 rmSync(tmp, { recursive: true, force: true });
-ok(keys.size === 14, `14 distinct programs (${keys.size})`);
+ok(keys.size === L.BOX_VARIANTS.length + 1, `${L.BOX_VARIANTS.length + 1} distinct programs (${keys.size})`);
 console.log(hasGlslang ? `   ${compiled} programs compiled (glslangValidator, GLSL ES 1.00)` : '   glslangValidator not installed: compile checks skipped');
 
 // ── DE sanity per formula (defaults) ────────────────────────────────────────
