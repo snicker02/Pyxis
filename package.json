@@ -1,0 +1,11 @@
+{
+  "name": "pyxis",
+  "version": "1.0.0",
+  "description": "Pyxis — 3D explorer for the Mandelbox family (Mandelbox, ABox mods, Kali box, Vary Scale 4D), built on Organon",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run.mjs",
+    "scenes": "node tools/build-scenes.mjs"
+  }
+}

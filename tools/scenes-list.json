@@ -1,0 +1,40 @@
+{
+  "groups": [["Pyxis originals", "pyxis"], ["Krzysztof Marczak (CC-BY 4.0)", "marczak"], ["Graeme McLaren (CC-BY 4.0)", "mclaren"], ["Robert Pancoast (CC-BY 4.0)", "pancoast"]],
+  "look": { "aoStrength": 0.6, "shadows": true, "fog": 0.08 },
+  "originals": [
+    { "key": "classic", "label": "Classic Mandelbox (scale −1.5)", "variant": 0, "v": { "scale": -1.5, "dist": 5.2, "palette": 7, "colorSource": 2 } },
+    { "key": "sponge", "label": "Positive Scale Sponge", "variant": 0, "v": { "scale": 2.5, "iterations": 14, "dist": 14, "palette": 20, "colorSource": 1 } },
+    { "key": "rotfold", "label": "Rotated Folds", "variant": 0, "v": { "scale": -1.8, "rotFolds": true, "rfNXX": 8, "rfPYY": -6, "rfNZZ": 5, "dist": 5.5, "palette": 33, "colorSource": 2 } },
+    { "key": "twist", "label": "Twisted Box", "variant": 0, "v": { "scale": -2, "fRotOn": true, "fRotX": 12, "fRotY": 7, "dist": 6, "palette": 11 } },
+    { "key": "mod2", "label": "ABox Mod 2 · Cylinder Fold", "variant": 2, "v": { "scale": -1.9, "dist": 6, "palette": 19 } },
+    { "key": "mod11", "label": "ABox Mod 11", "variant": 3, "v": { "scale": -1.6, "addX": 0.1, "dist": 5.2, "palette": 17 } },
+    { "key": "mod12", "label": "ABox Mod 12 · Biased Sphere", "variant": 4, "v": { "scale": -1.8, "biasX": 0.1, "biasY": 0.1, "biasZ": 0.1, "dist": 5.5, "palette": 9 } },
+    { "key": "mod13", "label": "ABox Mod 13 · Inverted c", "variant": 5, "v": { "scale": -1.7, "invC": true, "dist": 5, "palette": 12 } },
+    { "key": "mod14", "label": "ABox Mod 14", "variant": 6, "v": { "dist": 13, "palette": 2 } },
+    { "key": "mod15", "label": "ABox Mod 15", "variant": 7, "v": { "scale": -1.8, "fRot2Z": 10, "dist": 5.4, "palette": 35 } },
+    { "key": "kaliIsland", "label": "Kali Box · Floating Island", "variant": 8, "v": { "scale": 1.577, "minR2": 0.494, "kaliAddX": 1.094, "kaliAddY": 1.363, "kaliAddZ": 0.53, "juliaMode": true, "juliaCX": -0.667, "juliaCY": 0.599, "juliaCZ": -0.884, "dist": 4, "palette": 7, "colorSource": 2 } },
+    { "key": "kaliArches", "label": "Kali Box · Arches", "variant": 8, "v": { "scale": 1.67, "minR2": 0.26, "kaliAddX": 0.693, "kaliAddY": 0.106, "kaliAddZ": 0.768, "dist": 4, "palette": 24, "colorSource": 2 } },
+    { "key": "kaliBlocks", "label": "Kali Box · Scattered Blocks", "variant": 8, "v": { "scale": 2.219, "minR2": 0.57, "kaliAddX": 1.547, "kaliAddY": 0.184, "kaliAddZ": 1.202, "juliaMode": true, "juliaCX": 0.127, "juliaCY": -0.199, "juliaCZ": 0.913, "dist": 4, "palette": 13, "colorSource": 2 } },
+    { "key": "kaliV2", "label": "Kali V2 · Facade", "variant": 9, "v": { "scale": 1.525, "minR2": 0.162, "kaliAddX": 1.593, "kaliAddY": 0.577, "kaliAddZ": 0.632, "dist": 4, "palette": 7, "colorSource": 2 } },
+    { "key": "kaliV2cube", "label": "Kali V2 · Tiled Cube", "variant": 9, "v": { "scale": 1.764, "minR2": 0.053, "kaliAddX": 1.342, "kaliAddY": 1.431, "kaliAddZ": 0.129, "juliaMode": true, "juliaCX": -0.161, "juliaCY": -0.227, "juliaCZ": 0.964, "dist": 7, "palette": 17, "colorSource": 2 } },
+    { "key": "kaliV3", "label": "Kali V3 · Porous Shell", "variant": 10, "v": { "dist": 3, "palette": 14 } },
+    { "key": "eiffie", "label": "Kali-Eiffie · City", "variant": 11, "v": { "scale": 1.843, "minR2": 0.131, "addC": true, "dist": 7, "fog": 0, "palette": 7, "colorSource": 2 } },
+    { "key": "vs4d", "label": "Vary Scale 4D (w₀ 0.3)", "variant": 12, "v": { "scale": -1.8, "w0": 0.3, "dist": 5.4, "palette": 5 } }
+  ],
+  "fract": [
+    { "key": "mbIterFog1", "group": "marczak", "label": "Iteration Fog I", "file": "iter fog 1.fract" },
+    { "key": "mbIterFog2", "group": "marczak", "label": "Iteration Fog II", "file": "iter fog 2.fract" },
+    { "key": "mbRoom", "group": "marczak", "label": "Mandelbox 40 · Room", "file": "mandelbox40_2.fract" },
+    { "key": "mbDome", "group": "marczak", "label": "Mandelbox 46 · Dome", "file": "mandelbox46.fract" },
+    { "key": "mbGarden", "group": "marczak", "label": "Mandelbox 60 · Garden", "file": "mandelbox60.fract" },
+    { "key": "mbRibbons", "group": "marczak", "label": "Mandelbox 62 · Ribbons", "file": "mandelbox62.fract" },
+    { "key": "mbStripes", "group": "marczak", "label": "Orbit Traps 005 · Stripes", "file": "orbitTraps 005.fract" },
+    { "key": "mbKaliHoles", "group": "marczak", "label": "Orbit Traps 007 · Kali V3", "file": "orbitTraps 007.fract" },
+    { "key": "gmMod1", "group": "mclaren", "label": "ABox Mod 1 · V2.11", "file": "aboxMod1 V2.11.fract" },
+    { "key": "gmMod11a", "group": "mclaren", "label": "ABox Mod 11 · 003", "file": "aboxMod11_003.fract" },
+    { "key": "gmMod11b", "group": "mclaren", "label": "ABox Mod 11 · for8cA", "file": "aboxMod11_for8cA.fract" },
+    { "key": "gmMod13", "group": "mclaren", "label": "ABox Mod 13 · 001", "file": "aboxMod13_001.fract" },
+    { "key": "rpDiamond", "group": "pancoast", "label": "Box Deuce Deuce", "file": "box-deuce-deuce.fract" },
+    { "key": "rpCraters", "group": "pancoast", "label": "Mandelbox 22 (anim)", "file": "mandelbox22_anim.fract" }
+  ]
+}

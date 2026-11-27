@@ -1,0 +1,10 @@
+{
+  "name": "organon",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Organon — shared WebGL1 progressive raymarcher engine and app shell for formula apps (Kyma, Eidos). No dependencies.",
+  "scripts": {
+    "test": "node tests/run.mjs"
+  }
+}
