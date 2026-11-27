@@ -12,7 +12,7 @@ import { PRESET_GROUPS } from './scenes.js';
 import { importFract } from './mbimport.js';
 import { setupUI } from './ui.js';
 
-export const VERSION = '1.0.0';
+export const VERSION = '1.1.0';
 
 const formula = {
   id: 'pyxis',
