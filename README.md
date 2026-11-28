@@ -165,3 +165,7 @@ core/                 → Organon (git submodule)
 ---
 
 Created with help from Claude AI.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
