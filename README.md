@@ -162,6 +162,10 @@ core/                 → Organon (git submodule)
 - Formula code ported from [Mandelbulber](https://github.com/buddhi1980/mandelbulber2) (Krzysztof Marczak and contributors).
 - Preset scenes from the Mandelbulber example collections of Krzysztof Marczak, Graeme McLaren and Robert Pancoast, used under CC-BY 4.0.
 
+## License
+
+MIT — see [LICENSE](LICENSE).
+
 ---
 
 Created with help from Claude AI.
